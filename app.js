@@ -1,4 +1,4 @@
-const GAS_URL="https://script.google.com/macros/s/XXXXX/exec";
+const GAS_URL="https://script.google.com/macros/s/AKfycbxHBADXalkfU1N5EEjvpWaQg-P_z_jnBhuKJRa5FGpuFhJ3xKwBBqgvFHhjGXKryy0/exec";
 let isAdmin=false, dragging=null, resizing=null, offsetX=0, offsetY=0;
 let seatLayout=[
   {id:"A01",x:20,y:20,label:"A01",used:false},{id:"A02",x:120,y:20,label:"A02",used:false},
