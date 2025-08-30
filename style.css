@@ -1,0 +1,17 @@
+body{font-family:"Segoe UI",sans-serif;margin:0;padding:0;transition:0.3s;}
+button{font-size:16px;padding:10px 20px;margin:5px;cursor:pointer;border:none;border-radius:4px;background:#0078d7;color:white;transition:0.2s;}
+button:hover{background:#005ea3;}
+.seat-container{position:relative;width:100%;max-width:1200px;height:700px;margin:auto;background:#fff;border:1px solid #ccc;overflow:hidden;}
+.seat{position:absolute;border:2px solid #333;border-radius:6px;width:80px;height:80px;text-align:center;line-height:80px;font-weight:600;user-select:none;transition:0.3s;cursor:default;}
+.seat.free{background:#2ecc71;color:white;}
+.seat.used{background:#f39c12;color:white;}
+.seat.longused{background:#e74c3c;color:white;}
+.seat.admin{cursor:move;box-shadow:0 0 6px 2px #0078d7aa;border-color:#0078d7;}
+.resize-handle{position:absolute;width:14px;height:14px;background:black;right:0;bottom:0;cursor:se-resize;border-radius:2px;opacity:0.6;}
+.resize-handle:hover{background:#0078d7;}
+body.dark{background:#121212;color:#eee;}
+body.dark .seat-container{background:#222;border-color:#555;}
+body.dark button{background:#4aa3ff;color:#121212;}
+body.dark .resize-handle{background:#eee;opacity:0.7;}
+#logArea{height:150px;overflow-y:auto;background:#eee;font-family:monospace;padding:8px;margin-top:10px;display:none;}
+body.dark #logArea{background:#121212;color:#eee;border:1px solid #444;}
