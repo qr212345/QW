@@ -1,48 +1,157 @@
 const GAS_URL="https://script.google.com/macros/s/AKfycbxHBADXalkfU1N5EEjvpWaQg-P_z_jnBhuKJRa5FGpuFhJ3xKwBBqgvFHhjGXKryy0/exec";
-let isAdmin=false, dragging=null, resizing=null, offsetX=0, offsetY=0;
+
+let isAdmin=false, dragging=null, offsetX=0, offsetY=0;
 let seatLayout=[
-  {id:"A01",x:20,y:20,label:"A01",used:false},{id:"A02",x:120,y:20,label:"A02",used:false},
-  {id:"B01",x:20,y:120,label:"B01",used:false},{id:"B02",x:120,y:120,label:"B02",used:false},
+  {id:"A01",x:20,y:50,label:"A01",used:false, updatedAt: Date.now()},
+  {id:"A02",x:120,y:50,label:"A02",used:false, updatedAt: Date.now()},
+  {id:"B01",x:20,y:150,label:"B01",used:false, updatedAt: Date.now()},
+  {id:"B02",x:120,y:150,label:"B02",used:false, updatedAt: Date.now()},
 ];
 
 const container=document.getElementById("seatContainer");
 const logArea=document.getElementById("logArea");
+const roomSvg=document.getElementById("roomSvg");
 
+// 部屋オブジェクト（柱・スクリーン）定義
+const roomObjects = {
+  wide: [
+    {type:"rect", x:100, y:50, width:50, height:200, fill:"#888"},
+    {type:"rect", x:300, y:50, width:50, height:200, fill:"#888"},
+    {type:"rect", x:0, y:0, width:800, height:30, fill:"#444"} // スクリーン
+  ],
+  tall: [
+    {type:"rect", x:50, y:100, width:200, height:50, fill:"#888"},
+    {type:"rect", x:50, y:300, width:200, height:50, fill:"#888"},
+    {type:"rect", x:0, y:0, width:600, height:30, fill:"#444"} // スクリーン
+  ]
+};
+
+// ログ表示（管理者モードのみ）
 function addLog(text){
+  if(!isAdmin) return;
   const now=new Date().toLocaleTimeString();
   logArea.style.display="block";
-  logArea.textContent=`[${now}] ${text}\n`+logArea.textContent;
+  logArea.textContent=`[${now}] ${text}\n` + logArea.textContent;
 }
 
+// 部屋描画
+function renderRoom(pattern){
+  const svg = roomSvg;
+  svg.innerHTML="";
+  roomObjects[pattern].forEach(obj=>{
+    if(obj.type==="rect"){
+      const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+      rect.setAttribute("x", obj.x);
+      rect.setAttribute("y", obj.y);
+      rect.setAttribute("width", obj.width);
+      rect.setAttribute("height", obj.height);
+      rect.setAttribute("fill", obj.fill);
+      svg.appendChild(rect);
+    }
+  });
+}
+
+// 座席作成
 function createSeat(seat){
   const div=document.createElement("div");
-  div.className="seat"+(isAdmin?" admin":"")+(seat.used?" used":"");
+  div.className="seat"+(isAdmin?" admin":"");
   div.style.left=seat.x+"px"; div.style.top=seat.y+"px";
-  div.style.width=(seat.width||80)+"px"; div.style.height=(seat.height||80)+"px";
   div.textContent=seat.label;
   div.dataset.id=seat.id;
-  
-  if(isAdmin){
-    // ドラッグ
-    div.addEventListener("mousedown", e=>{if(!e.target.classList.contains("resize-handle")){dragging=div;offsetX=e.offsetX;offsetY=e.offsetY;}});
+  div.contentEditable = isAdmin;
 
-    // リサイズハンドル
-    const resizer=document.createElement("div");
-    resizer.className="resize-handle";
-    resizer.addEventListener("mousedown", e=>{resizing=div;offsetX=e.clientX;offsetY=e.clientY; e.stopPropagation();});
-    div.appendChild(resizer);
+  // ステータス別色分け
+  div.style.background = seat.used ? "#999" : "#0cf";
+
+  if(isAdmin){
+    div.style.border="2px dashed #f00";
+
+    // 削除ボタン
+    const delBtn=document.createElement("button");
+    delBtn.textContent="×";
+    delBtn.style.position="absolute"; delBtn.style.top="0"; delBtn.style.right="0";
+    delBtn.style.width="20px"; delBtn.style.height="20px"; delBtn.style.fontSize="14px";
+    delBtn.addEventListener("click",(e)=>{
+      seatLayout = seatLayout.filter(s=>s.id!==seat.id);
+      renderSeats();
+      addLog(`座席 ${seat.id} 削除`);
+      e.stopPropagation();
+    });
+    div.appendChild(delBtn);
+
+    // ドラッグ開始
+    div.addEventListener("mousedown", e=>{
+      dragging=div; offsetX=e.offsetX; offsetY=e.offsetY;
+    });
   }
   return div;
 }
 
+// 座席描画
 function renderSeats(){
   container.innerHTML="";
   seatLayout.forEach(seat=>container.appendChild(createSeat(seat)));
 }
 
-// 管理モード切替
+// ドラッグ移動（座席同士・柱・壁衝突回避 + 10pxスナップ）
+document.addEventListener("mousemove", e=>{
+  if(dragging){
+    let newX = e.clientX - container.getBoundingClientRect().left - offsetX;
+    let newY = e.clientY - container.getBoundingClientRect().top - offsetY;
+
+    // SVG領域内制限
+    newX = Math.max(0, Math.min(newX, container.clientWidth-80));
+    newY = Math.max(0, Math.min(newY, container.clientHeight-80));
+
+    // 10px単位スナップ
+    newX = Math.round(newX/10)*10;
+    newY = Math.round(newY/10)*10;
+
+    // 座席重なりチェック
+    const currentId = dragging.dataset.id;
+    let overlapSeat = false;
+    seatLayout.forEach(seat=>{
+      if(seat.id === currentId) return;
+      if(newX < seat.x + 80 && newX + 80 > seat.x &&
+         newY < seat.y + 80 && newY + 80 > seat.y) overlapSeat=true;
+    });
+
+    // 部屋オブジェクト衝突チェック
+    let pattern = document.getElementById("roomPattern").value;
+    let overlapObj=false;
+    roomObjects[pattern].forEach(obj=>{
+      if(obj.type==="rect"){
+        if(newX < obj.x + obj.width && newX + 80 > obj.x &&
+           newY < obj.y + obj.height && newY + 80 > obj.y) overlapObj=true;
+      }
+    });
+
+    if(!overlapSeat && !overlapObj){
+      dragging.style.left=newX+"px";
+      dragging.style.top=newY+"px";
+    }
+  }
+});
+
+document.addEventListener("mouseup", e=>{
+  if(dragging){
+    const seat = seatLayout.find(s=>s.id===dragging.dataset.id);
+    seat.x=parseInt(dragging.style.left);
+    seat.y=parseInt(dragging.style.top);
+    seat.updatedAt = Date.now();
+    dragging=null;
+  }
+});
+
+// 管理モードON/OFF（パスワード）
 document.getElementById("toggleAdminBtn").onclick=()=>{
-  isAdmin=!isAdmin;
+  if(!isAdmin){
+    const pw=prompt("管理者パスワードを入力");
+    if(pw!=="admin123"){alert("パスワード違います"); return;}
+    isAdmin=true; logArea.style.display="block";
+  } else {
+    isAdmin=false; logArea.style.display="none";
+  }
   document.getElementById("addSeatBtn").style.display=isAdmin?"inline-block":"none";
   document.getElementById("manualSaveBtn").style.display=isAdmin?"inline-block":"none";
   renderSeats();
@@ -52,35 +161,53 @@ document.getElementById("toggleAdminBtn").onclick=()=>{
 // 座席追加
 document.getElementById("addSeatBtn").onclick=()=>{
   const id="S"+Date.now();
-  seatLayout.push({id,x:20,y:20,label:id,used:false});
+  seatLayout.push({id,x:20,y:50,label:id,used:false,updatedAt:Date.now()});
   renderSeats();
   addLog(`座席 ${id} 追加`);
 };
 
-// 自動・手動保存
+// 手動保存
 async function saveSeats(){
   try{
-    await fetch(GAS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"save",data:seatLayout})});
+    await fetch(GAS_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"save",data:seatLayout})
+    });
     addLog("💾 保存完了");
-  }catch{addLog("❌ 保存失敗");}
+  }catch{ addLog("❌ 保存失敗"); }
 }
 document.getElementById("manualSaveBtn").onclick=saveSeats;
-setInterval(saveSeats,30000); // 自動保存30秒ごと
-
-// 取得と表示
-async function fetchStatus(){
-  try{
-    const res=await fetch(GAS_URL+"?action=getUsage");
-    const data=await res.json();
-    seatLayout.forEach(s=>{s.used=!!data[s.id];});
-    renderSeats();
-  }catch(err){console.error(err);}
-}
-setInterval(fetchStatus,5000);
-fetchStatus();
 
 // テーマ切替
 document.getElementById("themeToggleBtn").onclick=()=>{
   const body=document.body;
-  if(body.classList.contains("light")){body.classList.replace("light","dark");}else{body.classList.replace("dark","light");}
+  if(body.classList.contains("light")) body.classList.replace("light","dark");
+  else body.classList.replace("dark","light");
 };
+
+// 部屋パターン切替
+document.getElementById("roomPattern").onchange=(e)=>{
+  const val=e.target.value;
+  if(val==="wide"){roomSvg.setAttribute("width","800"); roomSvg.setAttribute("height","600"); container.style.width="800px"; container.style.height="600px";}
+  else{roomSvg.setAttribute("width","600"); roomSvg.setAttribute("height","800"); container.style.width="600px"; container.style.height="800px";}
+  renderRoom(val);
+  renderSeats();
+};
+
+// 初期描画
+renderRoom(document.getElementById("roomPattern").value);
+renderSeats();
+
+// 自動取得（管理モードOFFのときのみ）
+async function fetchStatus(){
+  if(isAdmin) return;
+  try{
+    const res = await fetch(GAS_URL+"?action=getUsage");
+    const data = await res.json();
+    seatLayout.forEach(s=>{ if(data[s.id]) s.used=data[s.id].used; });
+    renderSeats();
+  }catch(err){ console.error(err); }
+}
+setInterval(fetchStatus,5000);
+fetchStatus();
