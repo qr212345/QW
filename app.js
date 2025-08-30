@@ -1,3 +1,5 @@
+document.addEventListener("DOMContentLoaded", () => {
+
 const GAS_URL="https://script.google.com/macros/s/AKfycbxHBADXalkfU1N5EEjvpWaQg-P_z_jnBhuKJRa5FGpuFhJ3xKwBBqgvFHhjGXKryy0/exec";
 
 let isAdmin=false, dragging=null, offsetX=0, offsetY=0;
@@ -12,7 +14,12 @@ const container=document.getElementById("seatContainer");
 const logArea=document.getElementById("logArea");
 const roomSvg=document.getElementById("roomSvg");
 
-// 部屋オブジェクト（柱・スクリーン）定義
+// ツールチップ
+const tooltip = document.createElement("div");
+tooltip.className = "tooltip";
+document.body.appendChild(tooltip);
+
+// 部屋オブジェクト（柱・スクリーン）
 const roomObjects = {
   wide: [
     {type:"rect", x:100, y:50, width:50, height:200, fill:"#888"},
@@ -60,8 +67,22 @@ function createSeat(seat){
   div.dataset.id=seat.id;
   div.contentEditable = isAdmin;
 
-  // ステータス別色分け
-  div.style.background = seat.used ? "#999" : "#0cf";
+  // ステータス別クラス
+  div.classList.remove("used","free");
+  div.classList.add(seat.used?"used":"free");
+
+  // ツールチップ
+  div.addEventListener("mouseenter", e=>{
+    tooltip.textContent = `座席: ${seat.label}\n状態: ${seat.used?"使用中":"空席"}`;
+    tooltip.style.left = e.pageX + 10 + "px";
+    tooltip.style.top = e.pageY + 10 + "px";
+    tooltip.style.opacity = 1;
+  });
+  div.addEventListener("mousemove", e=>{
+    tooltip.style.left = e.pageX + 10 + "px";
+    tooltip.style.top = e.pageY + 10 + "px";
+  });
+  div.addEventListener("mouseleave", ()=>{ tooltip.style.opacity = 0; });
 
   if(isAdmin){
     div.style.border="2px dashed #f00";
@@ -82,6 +103,7 @@ function createSeat(seat){
     // ドラッグ開始
     div.addEventListener("mousedown", e=>{
       dragging=div; offsetX=e.offsetX; offsetY=e.offsetY;
+      div.style.zIndex=1000;
     });
   }
   return div;
@@ -93,36 +115,32 @@ function renderSeats(){
   seatLayout.forEach(seat=>container.appendChild(createSeat(seat)));
 }
 
-// ドラッグ移動（座席同士・柱・壁衝突回避 + 10pxスナップ）
+// ドラッグ移動
 document.addEventListener("mousemove", e=>{
   if(dragging){
     let newX = e.clientX - container.getBoundingClientRect().left - offsetX;
     let newY = e.clientY - container.getBoundingClientRect().top - offsetY;
 
-    // SVG領域内制限
     newX = Math.max(0, Math.min(newX, container.clientWidth-80));
     newY = Math.max(0, Math.min(newY, container.clientHeight-80));
 
-    // 10px単位スナップ
     newX = Math.round(newX/10)*10;
     newY = Math.round(newY/10)*10;
 
-    // 座席重なりチェック
     const currentId = dragging.dataset.id;
-    let overlapSeat = false;
+    let overlapSeat=false;
     seatLayout.forEach(seat=>{
-      if(seat.id === currentId) return;
-      if(newX < seat.x + 80 && newX + 80 > seat.x &&
-         newY < seat.y + 80 && newY + 80 > seat.y) overlapSeat=true;
+      if(seat.id===currentId) return;
+      if(newX<seat.x+80 && newX+80>seat.x &&
+         newY<seat.y+80 && newY+80>seat.y) overlapSeat=true;
     });
 
-    // 部屋オブジェクト衝突チェック
     let pattern = document.getElementById("roomPattern").value;
     let overlapObj=false;
     roomObjects[pattern].forEach(obj=>{
       if(obj.type==="rect"){
-        if(newX < obj.x + obj.width && newX + 80 > obj.x &&
-           newY < obj.y + obj.height && newY + 80 > obj.y) overlapObj=true;
+        if(newX<obj.x+obj.width && newX+80>obj.x &&
+           newY<obj.y+obj.height && newY+80>obj.y) overlapObj=true;
       }
     });
 
@@ -139,6 +157,7 @@ document.addEventListener("mouseup", e=>{
     seat.x=parseInt(dragging.style.left);
     seat.y=parseInt(dragging.style.top);
     seat.updatedAt = Date.now();
+    dragging.style.zIndex="";
     dragging=null;
   }
 });
@@ -175,7 +194,7 @@ async function saveSeats(){
       body:JSON.stringify({action:"save",data:seatLayout})
     });
     addLog("💾 保存完了");
-  }catch{ addLog("❌ 保存失敗"); }
+  }catch(err){ addLog("❌ 保存失敗: "+err); }
 }
 document.getElementById("manualSaveBtn").onclick=saveSeats;
 
@@ -211,3 +230,5 @@ async function fetchStatus(){
 }
 setInterval(fetchStatus,5000);
 fetchStatus();
+
+});
