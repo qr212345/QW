@@ -14,59 +14,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === レイアウト定義 ===
   const layoutMeta = {
-    layout1: { width: 1000, height: 700 },
-    layout2: { width: 1000, height: 700 }
+    wide: { width: 800, height: 600 },
+    tall: { width: 600, height: 800 }
   };
 
   const seatLayouts = {
-    layout1: [
+    wide: [
       {id:"A01", x:140, y:220, label:"A01", used:false, updatedAt:Date.now()},
-      {id:"A02", x:200, y:180, label:"A02", used:false, updatedAt:Date.now()},
-      {id:"A03", x:260, y:220, label:"A03", used:false, updatedAt:Date.now()},
-      {id:"A04", x:260, y:290, label:"A04", used:false, updatedAt:Date.now()},
-      {id:"A05", x:200, y:330, label:"A05", used:false, updatedAt:Date.now()},
-      {id:"A06", x:140, y:290, label:"A06", used:false, updatedAt:Date.now()},
-      {id:"B01", x:460, y:220, label:"B01", used:false, updatedAt:Date.now()},
-      {id:"B02", x:520, y:180, label:"B02", used:false, updatedAt:Date.now()},
-      {id:"B03", x:580, y:220, label:"B03", used:false, updatedAt:Date.now()},
-      {id:"B04", x:580, y:290, label:"B04", used:false, updatedAt:Date.now()},
-      {id:"B05", x:520, y:330, label:"B05", used:false, updatedAt:Date.now()},
-      {id:"B06", x:460, y:290, label:"B06", used:false, updatedAt:Date.now()}
+      {id:"A02", x:200, y:180, label:"A02", used:false, updatedAt:Date.now()}
     ],
-    layout2: [
-      {id:"C01", x:120, y:120, label:"C01", used:false, updatedAt:Date.now()},
-      {id:"C02", x:220, y:120, label:"C02", used:false, updatedAt:Date.now()},
-      {id:"C03", x:320, y:120, label:"C03", used:false, updatedAt:Date.now()},
-      {id:"C04", x:420, y:120, label:"C04", used:false, updatedAt:Date.now()},
-      {id:"C05", x:520, y:120, label:"C05", used:false, updatedAt:Date.now()},
-      {id:"C06", x:620, y:120, label:"C06", used:false, updatedAt:Date.now()},
-      {id:"D01", x:200, y:360, label:"D01", used:false, updatedAt:Date.now()},
-      {id:"D02", x:260, y:320, label:"D02", used:false, updatedAt:Date.now()},
-      {id:"D03", x:320, y:360, label:"D03", used:false, updatedAt:Date.now()},
-      {id:"D04", x:320, y:420, label:"D04", used:false, updatedAt:Date.now()},
-      {id:"D05", x:260, y:460, label:"D05", used:false, updatedAt:Date.now()},
-      {id:"D06", x:200, y:420, label:"D06", used:false, updatedAt:Date.now()}
-    ]
-  };
-
-  // === 部屋オブジェクト ===
-  const roomObjects = {
-    layout1: [
-      {type:"rect", x:0, y:0, width:layoutMeta.layout1.width, height:30, fill:"#222"},
-      {type:"rect", x:380, y:80, width:240, height:30, fill:"#e6e6e6"},
-      {type:"rect", x:120, y:450, width:200, height:50, fill:"#bdbdbd"},
-      {type:"rect", x:680, y:200, width:220, height:60, fill:"#bdbdbd"},
-      {type:"rect", x:860, y:60, width:60, height:60, fill:"#8aa"},
-      {type:"rect", x:860, y:140, width:60, height:40, fill:"#8ab"}
-    ],
-    layout2: [
-      {type:"rect", x:0, y:0, width:layoutMeta.layout2.width, height:30, fill:"#222"},
-      {type:"rect", x:layoutMeta.layout2.width-280, y:0, width:280, height:30, fill:"#222"},
-      {type:"rect", x:80, y:70, width:760, height:40, fill:"#bdbdbd"},
-      {type:"rect", x:80, y:160, width:760, height:40, fill:"#bdbdbd"},
-      {type:"rect", x:760, y:260, width:160, height:40, fill:"#e6e6e6"},
-      {type:"rect", x:40, y:60, width:30, height:120, fill:"#999"},
-      {type:"rect", x:20, y:60, width:20, height:40, fill:"#777"}
+    tall: [
+      {id:"B01", x:120, y:120, label:"B01", used:false, updatedAt:Date.now()},
+      {id:"B02", x:220, y:120, label:"B02", used:false, updatedAt:Date.now()}
     ]
   };
 
@@ -75,9 +34,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const roomSvg   = document.getElementById("roomSvg");
   const logArea   = document.getElementById("logArea");
   const roomPatternSelect = document.getElementById("roomPattern");
+  const toggleAdminBtn = document.getElementById("toggleAdminBtn");
+  const addSeatBtn = document.getElementById("addSeatBtn");
+  const manualSaveBtn = document.getElementById("manualSaveBtn");
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
 
   // === 初期座席レイアウト ===
-  let seatLayout = JSON.parse(JSON.stringify(seatLayouts["layout1"]));
+  let seatLayout = JSON.parse(JSON.stringify(seatLayouts[roomPatternSelect.value]));
 
   // === ツールチップ ===
   const tooltip = document.createElement("div");
@@ -85,49 +48,32 @@ document.addEventListener("DOMContentLoaded", () => {
   document.body.appendChild(tooltip);
 
   // === 管理者モード切替 ===
-  document.getElementById("toggleAdmin").onclick = () => {
-    isAdmin = !isAdmin;
-    renderSeats();
-  };
+  if(toggleAdminBtn){
+    toggleAdminBtn.onclick = () => {
+      isAdmin = !isAdmin;
+      renderSeats();
+      addSeatBtn.style.display = isAdmin ? "inline-block" : "none";
+      manualSaveBtn.style.display = isAdmin ? "inline-block" : "none";
+      logArea.style.display = isAdmin ? "block" : "none";
+      addLog(`管理者モード ${isAdmin ? "ON" : "OFF"}`);
+    };
+  }
 
   // === ログ関数 ===
   function addLog(text){
-    if(!isAdmin) return;
+    if(!isAdmin || !logArea) return;
     const now = new Date().toLocaleTimeString();
-    logArea.style.display = "block";
     logArea.textContent = `[${now}] ${text}\n` + logArea.textContent;
   }
 
-  // === CSV出力 ===
-  document.getElementById("exportCSV").onclick = () => {
-    const csv = seatLayout.map(s=>`${s.id},${s.label},${s.x},${s.y},${s.used}`).join("\n");
-    const blob = new Blob([csv], {type:"text/csv"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "seats.csv";
-    a.click();
-  };
-
   // === 部屋描画 ===
   function renderRoom(pattern){
+    if(!roomSvg) return;
     roomSvg.innerHTML = "";
     const meta = layoutMeta[pattern];
     roomSvg.setAttribute("width",  meta.width);
     roomSvg.setAttribute("height", meta.height);
     roomSvg.style.transition = "all 0.5s ease";
-
-    roomObjects[pattern].forEach(obj => {
-      if(obj.type==="rect"){
-        const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        rect.setAttribute("x", obj.x);
-        rect.setAttribute("y", obj.y);
-        rect.setAttribute("width", obj.width);
-        rect.setAttribute("height", obj.height);
-        rect.setAttribute("fill", obj.fill);
-        rect.style.transition = "all 0.5s ease";
-        roomSvg.appendChild(rect);
-      }
-    });
   }
 
   // === 六角形ポイント生成 ===
@@ -145,6 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === グラデーション定義 ===
   function injectSeatGradients(svg, seatId){
+    if(!svg) return {freeId:"", usedId:""};
     const svgNS = "http://www.w3.org/2000/svg";
     const defs = document.createElementNS(svgNS, "defs");
 
@@ -172,7 +119,9 @@ document.addEventListener("DOMContentLoaded", () => {
       left: seat.x+"px",
       top: seat.y+"px",
       width: SEAT_SIZE+"px",
-      height: SEAT_SIZE+"px"
+      height: SEAT_SIZE+"px",
+      position: "absolute",
+      cursor: isAdmin ? "grab" : "default"
     });
     div.dataset.id = seat.id;
 
@@ -183,7 +132,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { freeId, usedId } = injectSeatGradients(svg, seat.id);
 
-    // 六角形
     const hex = document.createElementNS(svgNS,"polygon");
     hex.setAttribute("points", hexPoints());
     hex.setAttribute("fill", seat.used?`url(#${usedId})`:`url(#${freeId})`);
@@ -191,7 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
     hex.dataset.role="hex";
     svg.appendChild(hex);
 
-    // 中央四角
     const rect = document.createElementNS(svgNS,"rect");
     const rectSize = 24;
     rect.setAttribute("x",(SEAT_SIZE-rectSize)/2);
@@ -202,7 +149,6 @@ document.addEventListener("DOMContentLoaded", () => {
     rect.setAttribute("fill","#fff");
     svg.appendChild(rect);
 
-    // ラベル
     const text = document.createElementNS(svgNS,"text");
     text.setAttribute("x",HALF); text.setAttribute("y",HALF+1);
     text.setAttribute("text-anchor","middle");
@@ -262,6 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderSeats(){
+    if(!container) return;
     container.innerHTML = "";
     seatLayout.forEach(seat => container.appendChild(createSeat(seat)));
   }
@@ -284,13 +231,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return newX< s.x+SEAT_SIZE && newX+SEAT_SIZE> s.x &&
              newY< s.y+SEAT_SIZE && newY+SEAT_SIZE> s.y;
     });
-    const overlapObj = roomObjects[pattern].some(o=>{
-      if(o.type!=="rect") return false;
-      return newX<o.x+o.width && newX+SEAT_SIZE>o.x &&
-             newY<o.y+o.height && newY+SEAT_SIZE>o.y;
-    });
 
-    if(!overlapSeat && !overlapObj){
+    if(!overlapSeat){
       dragging.style.left=newX+"px";
       dragging.style.top=newY+"px";
     }
@@ -299,23 +241,54 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("mouseup", ()=>{
     if(!dragging) return;
     const seat = seatLayout.find(s=>s.id===dragging.dataset.id);
-    seat.x = parseInt(dragging.style.left);
-    seat.y = parseInt(dragging.style.top);
-    seat.updatedAt = Date.now();
+    if(seat){
+      seat.x = parseInt(dragging.style.left);
+      seat.y = parseInt(dragging.style.top);
+      seat.updatedAt = Date.now();
+    }
     dragging.style.zIndex="";
     dragging.style.cursor="grab";
     dragging=null;
   });
 
   // === 部屋切替 ===
-  roomPatternSelect.onchange = e=>{
-    const val = e.target.value;
-    seatLayout = JSON.parse(JSON.stringify(seatLayouts[val]));
-    container.style.width = layoutMeta[val].width+"px";
-    container.style.height = layoutMeta[val].height+"px";
-    renderRoom(val);
-    renderSeats();
-  };
+  if(roomPatternSelect){
+    roomPatternSelect.onchange = e=>{
+      const val = e.target.value;
+      seatLayout = JSON.parse(JSON.stringify(seatLayouts[val]));
+      container.style.width = layoutMeta[val].width+"px";
+      container.style.height = layoutMeta[val].height+"px";
+      renderRoom(val);
+      renderSeats();
+    };
+  }
+
+  // === 座席追加 ===
+  if(addSeatBtn){
+    addSeatBtn.onclick = ()=>{
+      const pattern = roomPatternSelect.value;
+      const newId = "S" + String(Math.floor(Math.random()*1000)).padStart(3,"0");
+      const newSeat = {id:newId, x:50, y:50, label:newId, used:false, updatedAt:Date.now()};
+      seatLayout.push(newSeat);
+      renderSeats();
+      addLog(`座席 ${newId} 追加`);
+    };
+  }
+
+  // === 座席保存（GAS連携）===
+  if(manualSaveBtn){
+    manualSaveBtn.onclick = async ()=>{
+      try{
+        const res = await fetch(GAS_URL_SEAT, {
+          method:"POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({action:"saveSeats", seats:seatLayout})
+        });
+        const data = await res.json();
+        addLog(`座席を保存しました (${data.status||"OK"})`);
+      }catch(err){ console.error(err); addLog("保存失敗"); }
+    };
+  }
 
   // === 使用状況取得（GAS連携）===
   async function fetchUsage(){
@@ -342,10 +315,11 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchUsage();
 
   // === 初期描画 ===
-  const initialPattern = roomPatternSelect.value || "layout1";
+  const initialPattern = roomPatternSelect.value || "wide";
   seatLayout = JSON.parse(JSON.stringify(seatLayouts[initialPattern]));
   container.style.width = layoutMeta[initialPattern].width+"px";
   container.style.height = layoutMeta[initialPattern].height+"px";
   renderRoom(initialPattern);
   renderSeats();
+
 });
