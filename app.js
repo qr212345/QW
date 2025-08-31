@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let objectLayout = [
     {id:"A01", x:20, y:50, label:"A01", type:"seat", used:false, updatedAt:Date.now()},
     {id:"A02", x:120, y:50, label:"A02", type:"seat", used:false, updatedAt:Date.now()},
-    {id:"O01", x:300, y:50, label:"柱", type:"object", updatedAt:Date.now()}
+    {id:"O01", x:300, y:50, label:"", type:"object", updatedAt:Date.now()}
   ];
 
   const container = document.getElementById("seatContainer");
@@ -178,7 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   document.getElementById("addObjectBtn").onclick = ()=>{
     const id = "O"+Date.now();
-    objectLayout.push({id,x:50,y:50,label:"オブジェクト",type:"object",updatedAt:Date.now()});
+    objectLayout.push({id,x:50,y:50,label:"",type:"object",updatedAt:Date.now()});
     renderObjects();
     addLog(`オブジェクト ${id} 追加`);
   };
