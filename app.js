@@ -24,10 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.body.appendChild(tooltip);
 
   // === 部屋描画 ===
-  const roomObjects = {
-    wide: [],
-    tall: []
-  };
+  const roomObjects = { wide: [], tall: [] };
   function renderRoom(pattern){
     roomSvg.innerHTML="";
     roomObjects[pattern].forEach(obj=>{
@@ -47,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // === オブジェクト作成（座席・黒オブジェクト） ===
   function createObject(obj){
     const div = document.createElement("div");
-    div.className = "object" + (isAdmin?" admin":"");
+    div.className = "object"+(isAdmin?" admin":"");
     const w = obj.width || (obj.type==="seat"?80:60);
     const h = obj.height || (obj.type==="seat"?80:60);
     Object.assign(div.style,{
@@ -107,8 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if(e.target===delBtn) return;
         dragging = div; offsetX = e.offsetX; offsetY = e.offsetY;
         resizing = false;
-        div.style.zIndex = 1000;
-        div.style.cursor="grabbing";
+        div.style.zIndex = 1000; div.style.cursor="grabbing";
       });
 
       // リサイズ（黒オブジェクトのみ）
@@ -144,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
     objectLayout.forEach(o=>container.appendChild(createObject(o)));
   }
 
-  // ドラッグ＆リサイズ処理
+  // ドラッグ＆リサイズ
   document.addEventListener("mousemove", e=>{
     if(!dragging) return;
     const boundsW = container.clientWidth;
@@ -168,7 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // 他の座席との重なり
     const overlapSeat = objectLayout.some(o=>{
       if(o.id===currentId || o.type!=="seat") return false;
       return newX<o.x+80 && newX+80>o.x && newY<o.y+80 && newY+80>o.y;
@@ -183,10 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.addEventListener("mouseup", ()=>{
-    dragging = null;
-    resizing = false;
-  });
+  document.addEventListener("mouseup", ()=>{ dragging=null; resizing=false; });
 
   // 管理者モード
   document.getElementById("toggleAdminBtn").onclick = ()=>{
@@ -195,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if(pw!=="admin123"){ alert("パスワード違います"); return; }
       isAdmin = true; logArea.style.display="block";
     } else { isAdmin=false; logArea.style.display="none"; }
-    ["addSeatBtn","addBlockBtn","manualSaveBtn"].forEach(id=>{
+    ["addSeatBtn","addObjectBtn","manualSaveBtn"].forEach(id=>{
       const btn = document.getElementById(id);
       if(btn) btn.style.display = isAdmin?"inline-block":"none";
     });
@@ -210,7 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderObjects();
     addLog(`座席 ${id} 追加`);
   };
-  document.getElementById("addBlockBtn").onclick = ()=>{
+  document.getElementById("addObjectBtn").onclick = ()=>{
     const id = "O"+Date.now();
     objectLayout.push({id,x:50,y:50,label:"",type:"object",updatedAt:Date.now()});
     renderObjects();
