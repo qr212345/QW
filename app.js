@@ -1,10 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+  // === GAS URL ===
   const GAS_URL_SEAT  = "座席配置GASのURL";     
   const GAS_URL_USAGE = "座席ID⇄生徒IDGASのURL";  
 
-  let isAdmin = true, dragging = null, offsetX = 0, offsetY = 0;
+  // === 状態管理 ===
+  let isAdmin = false, dragging = null, offsetX = 0, offsetY = 0;
 
+  // === 部屋パターンごとの初期座席レイアウト ===
   const seatLayouts = {
     wide: [
       {id:"A01", x:20, y:50, label:"A01", used:false, updatedAt: Date.now()},
@@ -22,15 +25,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let seatLayout = JSON.parse(JSON.stringify(seatLayouts["wide"]));
 
+  // === DOM ===
   const container = document.getElementById("seatContainer");
   const logArea   = document.getElementById("logArea");
   const roomSvg   = document.getElementById("roomSvg");
 
-  // ツールチップ
+  // === ツールチップ ===
   const tooltip = document.createElement("div");
   tooltip.className = "tooltip";
+  Object.assign(tooltip.style, {
+    transition: "all 0.2s",
+    padding: "6px 12px",
+    borderRadius: "6px",
+    background: "rgba(0,0,0,0.75)",
+    color: "#fff",
+    fontSize: "13px",
+    position: "absolute",
+    pointerEvents: "none",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+    opacity: 0
+  });
   document.body.appendChild(tooltip);
 
+  // === 部屋データ ===
   const roomObjects = {
     wide: [
       {type:"rect", x:100, y:50, width:50, height:200, fill:"#aaa"},
@@ -44,6 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ]
   };
 
+  // === ログ関数 ===
   function addLog(text){
     if(!isAdmin) return;
     const now = new Date().toLocaleTimeString();
@@ -51,9 +69,11 @@ document.addEventListener("DOMContentLoaded", () => {
     logArea.textContent = `[${now}] ${text}\n` + logArea.textContent;
   }
 
+  // === 部屋描画 ===
   function renderRoom(pattern){
     roomSvg.innerHTML="";
     const objects = roomObjects[pattern];
+    if(!objects){ console.error("Invalid room pattern:", pattern); return; }
     objects.forEach(obj => {
       if(obj.type==="rect"){
         const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
@@ -68,37 +88,29 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // === 座席生成 ===
   function createSeat(seat){
     const div = document.createElement("div");
     div.className = "seat" + (isAdmin?" admin":"");
-    div.style.left = seat.x + "px";
-    div.style.top  = seat.y + "px";
-
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("width","70");
-    svg.setAttribute("height","70");
-
-    // 六角形
-    const hex = document.createElementNS(svgNS, "polygon");
-    hex.setAttribute("points","35,5 60,20 60,50 35,65 10,50 10,20");
-    hex.setAttribute("fill", seat.used ? "#f66" : "#6f6");
-    hex.setAttribute("stroke","#333");
-    hex.setAttribute("stroke-width","2");
-    svg.appendChild(hex);
-
-    // ラベル
-    const text = document.createElementNS(svgNS, "text");
-    text.setAttribute("x","35");
-    text.setAttribute("y","40");
-    text.setAttribute("text-anchor","middle");
-    text.setAttribute("dominant-baseline","middle");
-    text.setAttribute("font-size","12");
-    text.setAttribute("fill","#000");
-    text.textContent = seat.label;
-    svg.appendChild(text);
-
-    div.appendChild(svg);
+    Object.assign(div.style, {
+      left: seat.x + "px",
+      top: seat.y + "px",
+      width: "70px",
+      height: "70px",
+      lineHeight: "70px",
+      textAlign: "center",
+      borderRadius: "12px",
+      background: seat.used ? "linear-gradient(135deg,#f66,#c33)" : "linear-gradient(135deg,#6f6,#3c3)",
+      color: "#fff",
+      fontWeight: "bold",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+      position: "absolute",
+      cursor: isAdmin ? "grab" : "default",
+      transition: "all 0.3s ease"
+    });
+    div.textContent = seat.label;
+    div.dataset.id = seat.id;
+    div.contentEditable = isAdmin;
 
     // ツールチップ
     div.addEventListener("mouseenter", e=>{
@@ -106,20 +118,33 @@ document.addEventListener("DOMContentLoaded", () => {
       tooltip.style.left = e.pageX + 12 + "px";
       tooltip.style.top  = e.pageY + 12 + "px";
       tooltip.style.opacity = 1;
-      tooltip.style.transform = "translateY(0)";
     });
     div.addEventListener("mousemove", e=>{
       tooltip.style.left = e.pageX + 12 + "px";
       tooltip.style.top  = e.pageY + 12 + "px";
     });
-    div.addEventListener("mouseleave", ()=>{
-      tooltip.style.opacity = 0;
-      tooltip.style.transform = "translateY(-4px)";
-    });
+    div.addEventListener("mouseleave", ()=>{ tooltip.style.opacity = 0; });
 
     if(isAdmin){
       const delBtn = document.createElement("button");
       delBtn.textContent = "×";
+      Object.assign(delBtn.style, {
+        position: "absolute",
+        top: "-10px",
+        right: "-10px",
+        width: "20px",
+        height: "20px",
+        borderRadius: "50%",
+        border: "none",
+        background: "#f33",
+        color: "#fff",
+        fontWeight: "bold",
+        cursor: "pointer",
+        opacity: 0,
+        transition: "opacity 0.3s"
+      });
+      div.addEventListener("mouseenter", ()=>{ delBtn.style.opacity=1; });
+      div.addEventListener("mouseleave", ()=>{ delBtn.style.opacity=0; });
       delBtn.addEventListener("click", e=>{
         seatLayout = seatLayout.filter(s=>s.id!==seat.id);
         renderSeats();
@@ -128,35 +153,10 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       div.appendChild(delBtn);
 
-      // ドラッグ
       div.addEventListener("mousedown", e=>{
         dragging = div; offsetX = e.offsetX; offsetY = e.offsetY;
         div.style.zIndex = 1000;
         div.style.cursor = "grabbing";
-      });
-
-      // ラベル編集（ダブルクリック）
-      div.addEventListener("dblclick", ()=>{
-        const input = document.createElement("input");
-        input.value = seat.label;
-        Object.assign(input.style, {
-          position:"absolute",
-          left:"0px",
-          top:"25px",
-          width:"70px",
-          textAlign:"center",
-          fontSize:"12px"
-        });
-        div.appendChild(input);
-        input.focus();
-        input.addEventListener("blur", ()=>{
-          seat.label = input.value;
-          text.textContent = seat.label;
-          div.removeChild(input);
-        });
-        input.addEventListener("keydown", e=>{
-          if(e.key==="Enter") input.blur();
-        });
       });
     }
 
@@ -168,6 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     seatLayout.forEach(seat => container.appendChild(createSeat(seat)));
   }
 
+  // === ドラッグ処理 ===
   document.addEventListener("mousemove", e=>{
     if(!dragging) return;
     let newX = e.clientX - container.getBoundingClientRect().left - offsetX;
@@ -175,18 +176,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const pattern = document.getElementById("roomPattern").value;
     const maxWidth  = pattern==="wide"?800:600;
     const maxHeight = pattern==="wide"?600:800;
-    newX = Math.max(0, Math.min(newX, maxWidth-70));
-    newY = Math.max(0, Math.min(newY, maxHeight-70));
+    newX = Math.max(0, Math.min(newX, maxWidth-80));
+    newY = Math.max(0, Math.min(newY, maxHeight-80));
 
-    const currentId = dragging.dataset.id;
-    const overlapSeat = seatLayout.some(seat=>{
+    let currentId = dragging.dataset.id;
+    let overlapSeat = seatLayout.some(seat=>{
       if(seat.id===currentId) return false;
-      return newX<seat.x+70 && newX+70>seat.x && newY<seat.y+70 && newY+70>seat.y;
+      return newX<seat.x+80 && newX+80>seat.x && newY<seat.y+80 && newY+80>seat.y;
     });
-    const overlapObj = roomObjects[pattern].some(obj=>{
+
+    let overlapObj = roomObjects[pattern].some(obj=>{
       if(obj.type!=="rect") return false;
-      return newX<obj.x+obj.width && newX+70>obj.x && newY<obj.y+obj.height && newY+70>obj.y;
+      return newX<obj.x+obj.width && newX+80>obj.x && newY<obj.y+obj.height && newY+80>obj.y;
     });
+
     if(!overlapSeat && !overlapObj){
       dragging.style.left = newX + "px";
       dragging.style.top  = newY + "px";
@@ -204,19 +207,26 @@ document.addEventListener("DOMContentLoaded", () => {
     dragging = null;
   });
 
+  // === 部屋パターン切替 ===
   document.getElementById("roomPattern").onchange = e=>{
     const val = e.target.value;
     seatLayout = JSON.parse(JSON.stringify(seatLayouts[val]));
     const width  = val==="wide"?800:600;
     const height = val==="wide"?600:800;
-    roomSvg.style.width = width+"px";
-    roomSvg.style.height = height+"px";
-    container.style.width  = width+"px";
-    container.style.height = height+"px";
+
+    roomSvg.style.transition = "all 0.5s ease";
+    container.style.transition = "all 0.5s ease";
+
+    roomSvg.setAttribute("width", width);
+    roomSvg.setAttribute("height", height);
+    container.style.width  = width + "px";
+    container.style.height = height + "px";
+
     renderRoom(val);
     renderSeats();
   };
 
+  // === 使用状況自動取得 ===
   async function fetchUsage(){
     if(isAdmin) return;
     try{
@@ -226,19 +236,20 @@ document.addEventListener("DOMContentLoaded", () => {
       seatLayout.forEach(s=>{
         s.used = data[s.id]?true:false;
         const div = container.querySelector(`[data-id="${s.id}"]`);
-        if(div){
-          const polygon = div.querySelector("polygon");
-          polygon.setAttribute("fill", s.used?"#f66":"#6f6");
-        }
+        if(div) div.style.background = s.used 
+          ? "linear-gradient(135deg,#f66,#c33)" 
+          : "linear-gradient(135deg,#6f6,#3c3)";
       });
     } catch(err){ console.error("fetchUsage error:", err); }
   }
   setInterval(fetchUsage,5000);
   fetchUsage();
 
+  // === 初期描画 ===
   const initialPattern = document.getElementById("roomPattern").value;
   seatLayout = JSON.parse(JSON.stringify(seatLayouts[initialPattern]));
   renderRoom(initialPattern);
   renderSeats();
 
 });
+と比べて何が変更されてる・
