@@ -6,12 +6,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === 状態管理 ===
   let isAdmin = false, dragging = null, offsetX = 0, offsetY = 0;
-  let seatLayout = [
-    {id:"A01", x:20, y:50, label:"A01", used:false, updatedAt: Date.now()},
-    {id:"A02", x:120, y:50, label:"A02", used:false, updatedAt: Date.now()},
-    {id:"B01", x:20, y:150, label:"B01", used:false, updatedAt: Date.now()},
-    {id:"B02", x:120, y:150, label:"B02", used:false, updatedAt: Date.now()},
-  ];
+
+  // === 部屋パターンごとの初期座席レイアウト ===
+  const seatLayouts = {
+    wide: [
+      {id:"A01", x:20, y:50, label:"A01", used:false, updatedAt: Date.now()},
+      {id:"A02", x:120, y:50, label:"A02", used:false, updatedAt: Date.now()},
+      {id:"B01", x:20, y:150, label:"B01", used:false, updatedAt: Date.now()},
+      {id:"B02", x:120, y:150, label:"B02", used:false, updatedAt: Date.now()},
+    ],
+    tall: [
+      {id:"A01", x:20, y:50, label:"A01", used:false, updatedAt: Date.now()},
+      {id:"A02", x:20, y:150, label:"A02", used:false, updatedAt: Date.now()},
+      {id:"B01", x:120, y:50, label:"B01", used:false, updatedAt: Date.now()},
+      {id:"B02", x:120, y:150, label:"B02", used:false, updatedAt: Date.now()},
+    ]
+  };
+
+  let seatLayout = JSON.parse(JSON.stringify(seatLayouts["wide"]));
 
   // === DOM ===
   const container = document.getElementById("seatContainer");
@@ -21,20 +33,31 @@ document.addEventListener("DOMContentLoaded", () => {
   // === ツールチップ ===
   const tooltip = document.createElement("div");
   tooltip.className = "tooltip";
-  tooltip.style.transition = "all 0.2s";
+  Object.assign(tooltip.style, {
+    transition: "all 0.2s",
+    padding: "6px 12px",
+    borderRadius: "6px",
+    background: "rgba(0,0,0,0.75)",
+    color: "#fff",
+    fontSize: "13px",
+    position: "absolute",
+    pointerEvents: "none",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+    opacity: 0
+  });
   document.body.appendChild(tooltip);
 
   // === 部屋データ ===
   const roomObjects = {
     wide: [
-      {type:"rect", x:100, y:50, width:50, height:200, fill:"#888"},
-      {type:"rect", x:300, y:50, width:50, height:200, fill:"#888"},
-      {type:"rect", x:0, y:0, width:800, height:30, fill:"#000"} // スクリーン
+      {type:"rect", x:100, y:50, width:50, height:200, fill:"#aaa"},
+      {type:"rect", x:300, y:50, width:50, height:200, fill:"#aaa"},
+      {type:"rect", x:0, y:0, width:800, height:30, fill:"#222"} // スクリーン
     ],
     tall: [
-      {type:"rect", x:50, y:100, width:200, height:50, fill:"#888"},
-      {type:"rect", x:50, y:300, width:200, height:50, fill:"#888"},
-      {type:"rect", x:0, y:0, width:600, height:30, fill:"#000"} // スクリーン
+      {type:"rect", x:50, y:100, width:200, height:50, fill:"#aaa"},
+      {type:"rect", x:50, y:300, width:200, height:50, fill:"#aaa"},
+      {type:"rect", x:0, y:0, width:600, height:30, fill:"#222"} // スクリーン
     ]
   };
 
@@ -59,7 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rect.setAttribute("width", obj.width);
         rect.setAttribute("height", obj.height);
         rect.setAttribute("fill", obj.fill);
-        rect.style.transition = "all 0.5s";
+        rect.style.transition = "all 0.5s ease";
         roomSvg.appendChild(rect);
       }
     });
@@ -69,40 +92,59 @@ document.addEventListener("DOMContentLoaded", () => {
   function createSeat(seat){
     const div = document.createElement("div");
     div.className = "seat" + (isAdmin?" admin":"");
-    div.style.left = seat.x + "px";
-    div.style.top  = seat.y + "px";
-    div.style.transition = "left 0.3s, top 0.3s";
+    Object.assign(div.style, {
+      left: seat.x + "px",
+      top: seat.y + "px",
+      width: "70px",
+      height: "70px",
+      lineHeight: "70px",
+      textAlign: "center",
+      borderRadius: "12px",
+      background: seat.used ? "linear-gradient(135deg,#f66,#c33)" : "linear-gradient(135deg,#6f6,#3c3)",
+      color: "#fff",
+      fontWeight: "bold",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+      position: "absolute",
+      cursor: isAdmin ? "grab" : "default",
+      transition: "all 0.3s ease"
+    });
     div.textContent = seat.label;
     div.dataset.id = seat.id;
     div.contentEditable = isAdmin;
-    div.classList.remove("used","free");
-    div.classList.add(seat.used ? "used" : "free");
 
     // ツールチップ
     div.addEventListener("mouseenter", e=>{
       tooltip.textContent = `座席: ${seat.label}\n状態: ${seat.used?"使用中":"空席"}`;
-      tooltip.style.left = e.pageX + 10 + "px";
-      tooltip.style.top  = e.pageY + 10 + "px";
+      tooltip.style.left = e.pageX + 12 + "px";
+      tooltip.style.top  = e.pageY + 12 + "px";
       tooltip.style.opacity = 1;
     });
     div.addEventListener("mousemove", e=>{
-      tooltip.style.left = e.pageX + 10 + "px";
-      tooltip.style.top  = e.pageY + 10 + "px";
+      tooltip.style.left = e.pageX + 12 + "px";
+      tooltip.style.top  = e.pageY + 12 + "px";
     });
     div.addEventListener("mouseleave", ()=>{ tooltip.style.opacity = 0; });
 
     if(isAdmin){
-      div.style.border = "2px dashed #f00";
-      div.style.cursor = "grab";
-
-      // 削除ボタン
       const delBtn = document.createElement("button");
       delBtn.textContent = "×";
-      delBtn.className = "delete-btn";
-      delBtn.style.opacity = "0";
-      delBtn.style.transition = "opacity 0.3s";
-      div.addEventListener("mouseenter", ()=>{ delBtn.style.opacity="1"; });
-      div.addEventListener("mouseleave", ()=>{ delBtn.style.opacity="0"; });
+      Object.assign(delBtn.style, {
+        position: "absolute",
+        top: "-10px",
+        right: "-10px",
+        width: "20px",
+        height: "20px",
+        borderRadius: "50%",
+        border: "none",
+        background: "#f33",
+        color: "#fff",
+        fontWeight: "bold",
+        cursor: "pointer",
+        opacity: 0,
+        transition: "opacity 0.3s"
+      });
+      div.addEventListener("mouseenter", ()=>{ delBtn.style.opacity=1; });
+      div.addEventListener("mouseleave", ()=>{ delBtn.style.opacity=0; });
       delBtn.addEventListener("click", e=>{
         seatLayout = seatLayout.filter(s=>s.id!==seat.id);
         renderSeats();
@@ -111,13 +153,13 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       div.appendChild(delBtn);
 
-      // ドラッグ
       div.addEventListener("mousedown", e=>{
         dragging = div; offsetX = e.offsetX; offsetY = e.offsetY;
         div.style.zIndex = 1000;
         div.style.cursor = "grabbing";
       });
     }
+
     return div;
   }
 
@@ -126,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     seatLayout.forEach(seat => container.appendChild(createSeat(seat)));
   }
 
-  // === ドラッグ ===
+  // === ドラッグ処理 ===
   document.addEventListener("mousemove", e=>{
     if(!dragging) return;
     let newX = e.clientX - container.getBoundingClientRect().left - offsetX;
@@ -143,7 +185,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return newX<seat.x+80 && newX+80>seat.x && newY<seat.y+80 && newY+80>seat.y;
     });
 
-    // 部屋オブジェクト衝突
     let overlapObj = roomObjects[pattern].some(obj=>{
       if(obj.type!=="rect") return false;
       return newX<obj.x+obj.width && newX+80>obj.x && newY<obj.y+obj.height && newY+80>obj.y;
@@ -166,33 +207,20 @@ document.addEventListener("DOMContentLoaded", () => {
     dragging = null;
   });
 
-  // === 部屋パターン切替（回転） ===
+  // === 部屋パターン切替 ===
   document.getElementById("roomPattern").onchange = e=>{
     const val = e.target.value;
-    const newWidth  = val==="wide"?800:600;
-    const newHeight = val==="wide"?600:800;
-    const cx = newWidth/2;
-    const cy = newHeight/2;
-    const angle = val==="wide"?90:-90;
-    const rad = angle*Math.PI/180;
+    seatLayout = JSON.parse(JSON.stringify(seatLayouts[val]));
+    const width  = val==="wide"?800:600;
+    const height = val==="wide"?600:800;
 
-    // 座席を回転
-    seatLayout.forEach(seat=>{
-      const dx = seat.x - cx;
-      const dy = seat.y - cy;
-      seat.x = cx + dx*Math.cos(rad) - dy*Math.sin(rad);
-      seat.y = cy + dx*Math.sin(rad) + dy*Math.cos(rad);
+    roomSvg.style.transition = "all 0.5s ease";
+    container.style.transition = "all 0.5s ease";
 
-      // 枠内に補正
-      seat.x = Math.max(0, Math.min(seat.x, newWidth-80));
-      seat.y = Math.max(0, Math.min(seat.y, newHeight-80));
-    });
-
-    // SVGサイズ
-    roomSvg.setAttribute("width", newWidth);
-    roomSvg.setAttribute("height", newHeight);
-    container.style.width  = newWidth + "px";
-    container.style.height = newHeight + "px";
+    roomSvg.setAttribute("width", width);
+    roomSvg.setAttribute("height", height);
+    container.style.width  = width + "px";
+    container.style.height = height + "px";
 
     renderRoom(val);
     renderSeats();
@@ -205,15 +233,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch(GAS_URL_USAGE+"?action=getUsage");
       if(!res.ok) throw new Error(`HTTP error! ${res.status}`);
       const data = await res.json();
-      seatLayout.forEach(s=>{ s.used = data[s.id]?true:false; });
-      renderSeats();
+      seatLayout.forEach(s=>{
+        s.used = data[s.id]?true:false;
+        const div = container.querySelector(`[data-id="${s.id}"]`);
+        if(div) div.style.background = s.used 
+          ? "linear-gradient(135deg,#f66,#c33)" 
+          : "linear-gradient(135deg,#6f6,#3c3)";
+      });
     } catch(err){ console.error("fetchUsage error:", err); }
   }
   setInterval(fetchUsage,5000);
   fetchUsage();
 
   // === 初期描画 ===
-  renderRoom(document.getElementById("roomPattern").value);
+  const initialPattern = document.getElementById("roomPattern").value;
+  seatLayout = JSON.parse(JSON.stringify(seatLayouts[initialPattern]));
+  renderRoom(initialPattern);
   renderSeats();
 
 });
