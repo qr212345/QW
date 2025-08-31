@@ -13,19 +13,21 @@
   <button id="toggleAdminBtn">管理モードON/OFF</button>
   <button id="themeToggleBtn">ダークモード切替</button>
   <button id="addSeatBtn" style="display:none;">＋座席追加</button>
+  <button id="addBlockBtn" style="display:none;">＋机追加</button>
+  <button id="addScreenBtn" style="display:none;">＋スクリーン追加</button>
   <button id="manualSaveBtn" style="display:none;">💾 保存</button>
   <select id="roomPattern">
-    <option value="wide">横長</option>
-    <option value="tall">縦長</option>
+    <option value="wide">つながるーむ</option>
+    <option value="tall">マルチメディアパソコン室</option>
   </select>
 </div>
 
-<div id="roomContainer" style="width:800px; height:600px;">
-  <svg id="roomSvg" width="800" height="600"></svg>
-  <div id="seatContainer"></div>
+<div id="roomContainer" style="width:800px; height:600px; position:relative;">
+  <svg id="roomSvg" width="800" height="600" style="position:absolute; top:0; left:0;"></svg>
+  <div id="seatContainer" style="position:absolute; top:0; left:0; width:100%; height:100%;"></div>
 </div>
 
-<aside id="logArea" style="display:none;"></aside>
+<aside id="logArea" style="display:none; position:fixed; right:10px; top:100px; width:250px; height:400px; overflow:auto; background:#f4f4f4; border:1px solid #ccc; padding:5px;"></aside>
 
 <script src="app.js"></script>
 </body>
