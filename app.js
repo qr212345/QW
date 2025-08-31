@@ -252,4 +252,3 @@ document.addEventListener("DOMContentLoaded", () => {
   renderSeats();
 
 });
-と比べて何が変更されてる・
