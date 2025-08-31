@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
 
   // === GAS URL ===
-  const GAS_URL_SEAT  = "座席配置GASのURL";       // 座席・オブジェクト座標保存用
-  const GAS_URL_USAGE = "座席ID⇄生徒IDGASのURL";  // 使用状況取得用
+  const GAS_URL_SEAT  = "https://script.google.com/macros/s/AKfycbx7t3S0O2yMA-tUWJ0eUFY3X1C50_AdWpb0zzsSl38Ihsrnv3Bmm5o4pG2xwuYfCzQP/exec";       // 座席・オブジェクト座標保存用
+  const GAS_URL_USAGE = "https://script.google.com/macros/s/AKfycbxyCtgnwspuc6dmwdI_73P-M-XGm5BhD-eT_Yl1XMYd-B01lzuT86q1cgjxe_2uUUs/exec";  // 使用状況取得用
 
   // === 状態管理 ===
   let isAdmin = false, dragging = null, offsetX = 0, offsetY = 0, resizing = false;
