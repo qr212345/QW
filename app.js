@@ -1,126 +1,156 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  const GAS_URL_SEAT  = "座席配置GASのURL";       // 座席座標保存用
+  // === GAS URL ===
+  const GAS_URL_SEAT  = "座席配置GASのURL";       // 座席・オブジェクト座標保存用
   const GAS_URL_USAGE = "座席ID⇄生徒IDGASのURL";  // 使用状況取得用
 
+  // === 状態管理 ===
   let isAdmin = false, dragging = null, offsetX = 0, offsetY = 0;
-
-  // 座席・机を統一して全て type="seat"
-  let seatLayout = [
-    {id:"A01", x:50, y:50, label:"A01", used:false, updatedAt: Date.now(), style:"seat"},
-    {id:"A02", x:150, y:50, label:"A02", used:false, updatedAt: Date.now(), style:"seat"},
-    {id:"B01", x:50, y:150, label:"B01", used:false, updatedAt: Date.now(), style:"block"},
-    {id:"B02", x:150, y:150, label:"B02", used:false, updatedAt: Date.now(), style:"block"}
+  let objectLayout = [
+    {id:"A01", x:20, y:50, label:"A01", type:"seat", used:false, updatedAt:Date.now()},
+    {id:"A02", x:120, y:50, label:"A02", type:"seat", used:false, updatedAt:Date.now()},
+    {id:"O01", x:300, y:50, label:"柱", type:"object", updatedAt:Date.now()}
   ];
 
   const container = document.getElementById("seatContainer");
-  const roomSvg   = document.getElementById("roomSvg");
   const logArea   = document.getElementById("logArea");
+  const roomSvg   = document.getElementById("roomSvg");
 
-  // ツールチップ
+  // === ツールチップ ===
   const tooltip = document.createElement("div");
   tooltip.className = "tooltip";
-  tooltip.style.transition = "all 0.2s";
+  tooltip.style.transition = "all 0.2s ease";
   document.body.appendChild(tooltip);
 
-  // 部屋パターンごとのサイズ
-  const roomMeta = {
-    wide: {width:800,height:600},
-    tall: {width:600,height:800}
-  };
+  // === ログ関数 ===
+  function addLog(text){
+    if(!isAdmin) return;
+    const now = new Date().toLocaleTimeString();
+    logArea.style.display = "block";
+    logArea.textContent = `[${now}] ${text}\n` + logArea.textContent;
+  }
 
-  // 座席作成
-  function createSeat(seat){
+  // === オブジェクト作成（座席・黒い正方形オブジェクト） ===
+  function createObject(obj){
     const div = document.createElement("div");
-    div.className = "seat "+seat.style + (isAdmin?" admin":"");
-    div.style.left = seat.x + "px";
-    div.style.top = seat.y + "px";
-    div.style.width = "80px";
-    div.style.height= "80px";
-    div.style.position="absolute";
-    div.style.cursor = isAdmin?"grab":"default";
-    div.style.display="flex";
-    div.style.alignItems="center";
-    div.style.justifyContent="center";
-    div.style.fontWeight="bold";
-    div.dataset.id = seat.id;
-    div.contentEditable = isAdmin;
-    div.textContent = seat.label;
+    div.className = "object" + (isAdmin ? " admin" : "");
+    let size = obj.type==="seat"?80:60;
+    Object.assign(div.style,{
+      left: obj.x+"px",
+      top: obj.y+"px",
+      width: size+"px",
+      height: size+"px",
+      position: "absolute",
+      cursor: isAdmin?"grab":"default",
+      display:"flex",
+      alignItems:"center",
+      justifyContent:"center",
+      fontWeight:"bold",
+      zIndex: obj.type==="seat"?1:0,
+      transition:"left 0.3s, top 0.3s",
+      backgroundColor: obj.type==="object"?"#000":"#fff",
+      border: obj.type==="seat"?"2px solid #000":"none",
+      color: obj.type==="seat"?"#000":"#fff"
+    });
 
-    // 使用状況
-    div.classList.remove("used","free");
-    div.classList.add(seat.used?"used":"free");
+    div.dataset.id = obj.id;
+    div.dataset.type = obj.type;
+    div.textContent = obj.type==="seat"?obj.label:obj.label;
 
     // ツールチップ
     div.addEventListener("mouseenter", e=>{
-      tooltip.textContent = `座席: ${seat.label}\n状態: ${seat.used?"使用中":"空席"}\n更新: ${new Date(seat.updatedAt).toLocaleTimeString()}`;
-      tooltip.style.left = e.pageX + 10 + "px";
-      tooltip.style.top  = e.pageY + 10 + "px";
+      tooltip.textContent = `${obj.type} ${obj.label}\n更新: ${new Date(obj.updatedAt).toLocaleTimeString()}\n状態: ${obj.used?"使用中":"空席"}`;
+      tooltip.style.left = e.pageX+10+"px";
+      tooltip.style.top  = e.pageY+10+"px";
       tooltip.style.opacity = 1;
     });
     div.addEventListener("mousemove", e=>{
-      tooltip.style.left = e.pageX + 10 + "px";
-      tooltip.style.top  = e.pageY + 10 + "px";
+      tooltip.style.left = e.pageX+10+"px";
+      tooltip.style.top  = e.pageY+10+"px";
     });
-    div.addEventListener("mouseleave", ()=>{ tooltip.style.opacity = 0; });
+    div.addEventListener("mouseleave", ()=>{
+      tooltip.style.opacity = 0;
+    });
 
     if(isAdmin){
+      // contentEditable
+      if(obj.type==="seat" || obj.type==="object") div.contentEditable = true;
+
       // 削除ボタン
       const delBtn = document.createElement("button");
       delBtn.textContent = "×";
       delBtn.className = "delete-btn";
-      delBtn.style.opacity = 0;
-      delBtn.style.transition="opacity 0.3s";
-      div.addEventListener("mouseenter", ()=>{ delBtn.style.opacity=1; });
-      div.addEventListener("mouseleave", ()=>{ delBtn.style.opacity=0; });
+      delBtn.style.opacity = "0";
+      delBtn.style.transition = "opacity 0.3s";
+      div.addEventListener("mouseenter", ()=>{ delBtn.style.opacity="1"; });
+      div.addEventListener("mouseleave", ()=>{ delBtn.style.opacity="0"; });
       delBtn.addEventListener("click", e=>{
-        seatLayout = seatLayout.filter(s=>s.id!==seat.id);
-        renderSeats();
-        addLog(`座席 ${seat.id} 削除`);
+        objectLayout = objectLayout.filter(o=>o.id!==obj.id);
+        renderObjects();
+        addLog(`${obj.type} ${obj.id} 削除`);
         e.stopPropagation();
       });
       div.appendChild(delBtn);
 
       // ドラッグ
       div.addEventListener("mousedown", e=>{
-        dragging = div; offsetX=e.offsetX; offsetY=e.offsetY;
-        div.style.zIndex=1000; div.style.cursor="grabbing";
+        dragging = div; offsetX = e.offsetX; offsetY = e.offsetY;
+        div.style.zIndex = 1000; div.style.cursor="grabbing";
       });
+    }
+
+    // 座席使用状況クラス
+    if(obj.type==="seat"){
+      div.classList.remove("used","free");
+      div.classList.add(obj.used?"used":"free");
     }
 
     return div;
   }
 
-  function renderSeats(){
+  function renderObjects(){
     container.innerHTML="";
-    seatLayout.forEach(s=>container.appendChild(createSeat(s)));
+    objectLayout.forEach(o=>container.appendChild(createObject(o)));
   }
 
-  // ドラッグ処理
+  // === ドラッグ処理 ===
   document.addEventListener("mousemove", e=>{
     if(!dragging) return;
     const boundsW = container.clientWidth;
     const boundsH = container.clientHeight;
-    const w = 80; const h = 80;
+    const w = parseInt(dragging.style.width);
+    const h = parseInt(dragging.style.height);
     let newX = e.clientX - container.getBoundingClientRect().left - offsetX;
     let newY = e.clientY - container.getBoundingClientRect().top - offsetY;
     newX = Math.max(0, Math.min(newX, boundsW-w));
     newY = Math.max(0, Math.min(newY, boundsH-h));
-    dragging.style.left=newX+"px";
-    dragging.style.top=newY+"px";
+
+    const currentId = dragging.dataset.id;
+
+    // 他の座席との重なり判定（座席同士のみ）
+    const overlapSeat = objectLayout.some(o=>{
+      if(o.id===currentId || o.type!=="seat") return false;
+      return newX<o.x+80 && newX+80>o.x && newY<o.y+80 && newY+80>o.y;
+    });
+
+    if(!overlapSeat){
+      dragging.style.left = newX+"px";
+      dragging.style.top  = newY+"px";
+    }
   });
 
   document.addEventListener("mouseup", ()=>{
     if(!dragging) return;
-    const s = seatLayout.find(o=>o.id===dragging.dataset.id);
-    s.x = parseInt(dragging.style.left);
-    s.y = parseInt(dragging.style.top);
-    s.updatedAt = Date.now();
-    dragging.style.zIndex=""; dragging.style.cursor="grab";
-    dragging=null;
+    const obj = objectLayout.find(o=>o.id===dragging.dataset.id);
+    obj.x = parseInt(dragging.style.left);
+    obj.y = parseInt(dragging.style.top);
+    obj.updatedAt = Date.now();
+    dragging.style.zIndex="";
+    dragging.style.cursor = "grab";
+    dragging = null;
   });
 
-  // 管理者モード
+  // === 管理者モード切替 ===
   document.getElementById("toggleAdminBtn").onclick = ()=>{
     if(!isAdmin){
       const pw = prompt("管理者パスワード入力");
@@ -131,73 +161,67 @@ document.addEventListener("DOMContentLoaded", () => {
       isAdmin = false;
       logArea.style.display="none";
     }
-    ["addSeatBtn","manualSaveBtn"].forEach(id=>{
+    ["addSeatBtn","addObjectBtn","manualSaveBtn"].forEach(id=>{
       const btn = document.getElementById(id);
       if(btn) btn.style.display = isAdmin?"inline-block":"none";
     });
-    renderSeats();
+    renderObjects();
     addLog(`管理モード ${isAdmin?"ON":"OFF"}`);
   };
 
-  // 座席追加
+  // === 追加ボタン ===
   document.getElementById("addSeatBtn").onclick = ()=>{
     const id = "S"+Date.now();
-    seatLayout.push({id,x:50,y:50,label:id,type:"seat",used:false,updatedAt:Date.now(),style:"seat"});
-    renderSeats();
+    objectLayout.push({id,x:20,y:50,label:id,type:"seat",used:false,updatedAt:Date.now()});
+    renderObjects();
     addLog(`座席 ${id} 追加`);
   };
+  document.getElementById("addObjectBtn").onclick = ()=>{
+    const id = "O"+Date.now();
+    objectLayout.push({id,x:50,y:50,label:"オブジェクト",type:"object",updatedAt:Date.now()});
+    renderObjects();
+    addLog(`オブジェクト ${id} 追加`);
+  };
 
-  // 保存
-  async function saveSeats(){
+  // === 保存 ===
+  async function saveObjects(){
     if(!isAdmin) return;
     try{
       const res = await fetch(GAS_URL_SEAT,{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({action:"save",data:seatLayout})
+        body:JSON.stringify({action:"save", data:objectLayout})
       });
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       addLog("💾 保存完了");
     } catch(err){ addLog("❌ 保存失敗: "+err); console.error(err); }
   }
-  document.getElementById("manualSaveBtn").onclick = saveSeats;
+  document.getElementById("manualSaveBtn").onclick = saveObjects;
 
-  // テーマ切替
+  // === テーマ切替 ===
   document.getElementById("themeToggleBtn").onclick = ()=>{
-    document.body.classList.toggle("dark");
-    document.body.classList.toggle("light");
+    const body = document.body;
+    if(body.classList.contains("light")) body.classList.replace("light","dark");
+    else body.classList.replace("dark","light");
   };
 
-  // 部屋パターン切替
-  document.getElementById("roomPattern").onchange = e=>{
-    const val = e.target.value;
-    roomSvg.setAttribute("width", roomMeta[val].width);
-    roomSvg.setAttribute("height", roomMeta[val].height);
-    container.style.width = roomMeta[val].width+"px";
-    container.style.height = roomMeta[val].height+"px";
-  };
-
-  // 使用状況取得
+  // === 使用状況取得（管理者OFFのみ）===
   async function fetchUsage(){
     if(isAdmin) return;
     try{
       const res = await fetch(GAS_URL_USAGE+"?action=getUsage");
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      seatLayout.forEach(s=>{ if(s.type==="seat") s.used = !!data[s.id]; });
-      renderSeats();
+      objectLayout.forEach(o=>{
+        if(o.type==="seat") o.used = !!data[o.id];
+      });
+      renderObjects();
     } catch(err){ console.error(err); }
   }
   setInterval(fetchUsage,5000);
   fetchUsage();
 
-  // 初期描画
-  renderSeats();
-
-  function addLog(text){
-    if(!isAdmin) return;
-    const now = new Date().toLocaleTimeString();
-    logArea.textContent = `[${now}] ${text}\n` + logArea.textContent;
-  }
+  // === 初期描画 ===
+  renderObjects();
 
 });
