@@ -104,7 +104,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if(e.target===delBtn) return;
         dragging = div; offsetX = e.offsetX; offsetY = e.offsetY;
         resizing = false;
-        div.style.zIndex = 1000; div.style.cursor="grabbing";
+        div.style.zIndex = 1000;
+        div.style.cursor="grabbing";
       });
 
       // リサイズ（黒オブジェクトのみ）
@@ -147,10 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const boundsH = container.clientHeight;
     const w = parseInt(dragging.style.width);
     const h = parseInt(dragging.style.height);
-    let newX = e.clientX - container.getBoundingClientRect().left - offsetX;
-    let newY = e.clientY - container.getBoundingClientRect().top - offsetY;
-    newX = Math.max(0, Math.min(newX, boundsW-w));
-    newY = Math.max(0, Math.min(newY, boundsH-h));
 
     const currentId = dragging.dataset.id;
     const currentObj = objectLayout.find(o=>o.id===currentId);
@@ -164,18 +161,25 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const overlapSeat = objectLayout.some(o=>{
-      if(o.id===currentId || o.type!=="seat") return false;
-      return newX<o.x+80 && newX+80>o.x && newY<o.y+80 && newY+80>o.y;
-    });
+    let newX = e.clientX - container.getBoundingClientRect().left - offsetX;
+    let newY = e.clientY - container.getBoundingClientRect().top - offsetY;
+    newX = Math.max(0, Math.min(newX, boundsW - w));
+    newY = Math.max(0, Math.min(newY, boundsH - h));
 
-    if(!overlapSeat){
-      dragging.style.left = newX+"px";
-      dragging.style.top  = newY+"px";
-      currentObj.x = newX;
-      currentObj.y = newY;
-      currentObj.updatedAt = Date.now();
+    // 座席のみ重なり判定
+    if(currentObj.type==="seat"){
+      const overlapSeat = objectLayout.some(o=>{
+        if(o.id===currentId || o.type!=="seat") return false;
+        return newX<o.x+80 && newX+80>o.x && newY<o.y+80 && newY+80>o.y;
+      });
+      if(overlapSeat) return;
     }
+
+    dragging.style.left = newX+"px";
+    dragging.style.top  = newY+"px";
+    currentObj.x = newX;
+    currentObj.y = newY;
+    currentObj.updatedAt = Date.now();
   });
 
   document.addEventListener("mouseup", ()=>{ dragging=null; resizing=false; });
