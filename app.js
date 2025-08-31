@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
    *  ============================== */
   const CONFIG = {
     GAS_URL_SEAT: "https://script.google.com/macros/s/AKfycbxy1WhckKUk9xQOArZ94dXHn7SANMiKTnpNi_Bg-Cv3hrVWQTMkbO1kTlpGQQ38EqTb/exec",
-    GAS_URL_USAGE: "https://script.google.com/macros/s/YOUR_USAGE_GAS/exec",
+    GAS_URL_USAGE: "https://script.google.com/macros/s/AKfycbyQzCJ0iMsm6UBznSuU2Nx1oMwydRSjqmY2isslX_83bnuKsdbTXyyjNjLi0CD4rBM/exec",
     SEAT_DEFAULT_SIZE: 80,
     OBJECT_DEFAULT_SIZE: 60
   };
