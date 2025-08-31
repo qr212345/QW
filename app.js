@@ -4,19 +4,15 @@ document.addEventListener("DOMContentLoaded", () => {
    *  定数・状態管理
    *  ============================== */
   const CONFIG = {
-    GAS_URL_SEAT: "https://script.google.com/macros/s/AKfycbxy-qnpbVWR5xxjzUBD10F6dz31E_Y0bBTe7dx5Menzdt3FOzuTdd1m2RiU3EtCZH4p/exec",
-    GAS_URL_USAGE: "https://script.google.com/macros/s/AKfycbz7PVBPyjktzRWanKaXJs74lHASWiUSm9ZWwRuHFowpBlYuPgHh3sylBfAhYhluDIQ/exec",
+    GAS_URL_SEAT: "https://script.google.com/macros/s/AKfycbxy1WhckKUk9xQOArZ94dXHn7SANMiKTnpNi_Bg-Cv3hrVWQTMkbO1kTlpGQQ38EqTb/exec",
+    GAS_URL_USAGE: "https://script.google.com/macros/s/YOUR_USAGE_GAS/exec",
     SEAT_DEFAULT_SIZE: 80,
     OBJECT_DEFAULT_SIZE: 60
   };
 
   let isAdmin = false;
   let dragging = null, resizing = false, offsetX = 0, offsetY = 0;
-  let objectLayout = [
-    {id:"A01", x:20, y:50, label:"A01", type:"seat", used:false, updatedAt:Date.now()},
-    {id:"A02", x:120, y:50, label:"A02", type:"seat", used:false, updatedAt:Date.now()}
-  ];
-
+  let objectLayout = []; 
   const container = document.getElementById("seatContainer");
   const logArea   = document.getElementById("logArea");
   const roomSvg   = document.getElementById("roomSvg");
@@ -93,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
     div.addEventListener("mouseleave", ()=>{ tooltip.style.opacity = 0; });
 
     /** 管理者操作 */
-    if(isAdmin) {
+    if(isAdmin){
       if(obj.type==="seat") div.contentEditable = true;
 
       // 削除ボタン
@@ -199,9 +195,11 @@ document.addEventListener("DOMContentLoaded", () => {
   /** ==============================
    *  管理者モード切替
    *  ============================== */
-  document.getElementById("toggleAdminBtn").onclick = ()=>{
-    const pw = prompt("管理者パスワード入力");
-    if(!isAdmin && pw!=="admin123"){ alert("パスワード違います"); return; }
+  document.getElementById("toggleAdminBtn").onclick = async ()=>{
+    if(!isAdmin){
+      const pw = prompt("管理者パスワード入力");
+      if(pw!=="admin123"){ alert("パスワード違います"); return; }
+    }
     isAdmin = !isAdmin;
     logArea.style.display = isAdmin?"block":"none";
     ["addSeatBtn","addObjectBtn","manualSaveBtn"].forEach(id=>{
@@ -210,6 +208,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     renderObjects();
     addLog(`管理モード ${isAdmin?"ON":"OFF"}`);
+
+    // 管理者OFFの時のみ保存済み座席ロード
+    if(!isAdmin) await loadSavedLayout();
   };
 
   /** ==============================
@@ -247,6 +248,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   document.getElementById("manualSaveBtn").onclick = saveObjects;
+
+  /** ==============================
+   *  保存済み座席の読込
+   *  ============================== */
+  async function loadSavedLayout() {
+    try{
+      const res = await fetch(CONFIG.GAS_URL_SEAT,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({action:"loadLayout"})
+      });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if(data.status==="success" && Array.isArray(data.data)){
+        objectLayout = data.data;
+        renderObjects();
+        addLog("💾 保存済み座席ロード完了");
+      }
+    } catch(err){ console.error("loadSavedLayout error:", err); }
+  }
 
   /** ==============================
    *  使用状況取得（管理者OFF時）
