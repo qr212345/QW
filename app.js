@@ -25,16 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === 部屋データ ===
   const roomObjects = {
-    wide: [
-      {type:"rect", x:100, y:50, width:50, height:200, fill:"#888"},
-      {type:"rect", x:300, y:50, width:50, height:200, fill:"#888"},
-      {type:"rect", x:0, y:0, width:800, height:30, fill:"#444"} // スクリーン
-    ],
-    tall: [
-      {type:"rect", x:50, y:100, width:200, height:50, fill:"#888"},
-      {type:"rect", x:50, y:300, width:200, height:50, fill:"#888"},
-      {type:"rect", x:0, y:0, width:600, height:30, fill:"#444"} // スクリーン
-    ]
+    wide: [],
+    tall: []
   };
 
   // === ログ関数 ===
