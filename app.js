@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
    *  定数・状態管理
    *  ============================== */
   const CONFIG = {
-    GAS_URL_SEAT: "https://script.google.com/macros/s/AKfycbxy1WhckKUk9xQOArZ94dXHn7SANMiKTnpNi_Bg-Cv3hrVWQTMkbO1kTlpGQQ38EqTb/exec",
+    GAS_URL_SEAT: "https://script.google.com/macros/s/AKfycbz2YITUn8BxMUoCyB9RZL7Z-eYy27kAqTJ4LC0z4Ip8x_ksCzjQ8wP7LBeTS-QaW_hP/exec",
     GAS_URL_USAGE: "https://script.google.com/macros/s/AKfycbyQzCJ0iMsm6UBznSuU2Nx1oMwydRSjqmY2isslX_83bnuKsdbTXyyjNjLi0CD4rBM/exec",
     SEAT_DEFAULT_SIZE: 80,
     OBJECT_DEFAULT_SIZE: 60
